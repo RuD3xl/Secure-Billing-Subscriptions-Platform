@@ -9,6 +9,7 @@ import com.rud3xl.sbp.domain.enums.OrganizationRole;
 import com.rud3xl.sbp.domain.enums.OrganizationStatus;
 import com.rud3xl.sbp.dto.organization.CreateOrganizationRequest;
 import com.rud3xl.sbp.dto.organization.OrganizationResponse;
+import com.rud3xl.sbp.dto.organization.UpdateOrganizationRequest;
 import com.rud3xl.sbp.exception.OrganizationExistsException;
 import com.rud3xl.sbp.exception.ResourceNotFoundException;
 import com.rud3xl.sbp.mapper.OrganizationMapper;
@@ -63,17 +64,14 @@ public class OrganizationService {
     }
 
     @Transactional(readOnly = true)
-    public OrganizationResponse getOrganizationBySlug(UserDetails userDetails, String slug){
-        UserEntity user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow(() -> new ResourceNotFoundException("User not fund"));
-        Organization organization = organizationRepository.findBySlug(slug).orElseThrow(() -> new ResourceNotFoundException("Organization not fund"));
-        Membership membership = membershipRepository.findByUserIdAndOrganizationId(user.getId(), organization.getId())
-                .orElseThrow(() -> new AccessDeniedException("User is not a member of the organization"));
-        return organizationMapper.toDto(organization, membership.getRole());
+    public OrganizationResponse getOrganizationBySlug(String email, String slug){
+        Membership membership = getMembershipOrThrow(email, slug);
+        return organizationMapper.toDto(membership.getOrganization(), membership.getRole());
     }
 
     @Transactional(readOnly = true)
-    public List<OrganizationResponse> getAllMyOrganization(UserDetails userDetails) {
-        UserEntity user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow(() -> new ResourceNotFoundException("User not fund"));
+    public List<OrganizationResponse> getAllMyOrganization(String email) {
+        UserEntity user = userRepository.findByEmail(email).orElseThrow(() -> new ResourceNotFoundException("User not fund"));
         List<Membership> membership = membershipRepository.findAllByUserId(user.getId());
         return membership.stream()
                 .map(m -> organizationMapper.toDto(
@@ -83,6 +81,44 @@ public class OrganizationService {
                 .toList();
     }
 
+    @Transactional
+    public OrganizationResponse updateOrganization(String slug, UpdateOrganizationRequest request, String email){
+        Membership membership = getMembershipOrThrow(email, slug);
+        Organization organization = membership.getOrganization();
+        if(membership.getRole() != OrganizationRole.OWNER && membership.getRole() != OrganizationRole.ADMIN){
+            throw new AccessDeniedException("User is not allowed to update organization");
+        }
+        if(request.getName() != null){
+            organization.setName(request.getName());
+        }
+
+        if(request.getSlug() != null && !organization.getSlug().equals(request.getSlug())){
+            if (organizationRepository.existsBySlug(request.getSlug())) {
+                throw new OrganizationExistsException("Organization with slug " + request.getSlug() + " already exists.");
+            }
+            organization.setSlug(request.getSlug());
+        }
+        return organizationMapper.toDto(organization, membership.getRole());
+    }
+
+    @Transactional
+    public void deleteOrganization(String slug, String email){
+        Membership membership = getMembershipOrThrow(email, slug);
+        if(membership.getRole() != OrganizationRole.OWNER){
+            throw new AccessDeniedException("User is not allowed to delete organization");
+        }
+        Organization organization = membership.getOrganization();
+        organization.setStatus(OrganizationStatus.SUSPENDED);
+        organizationRepository.save(organization);
+    }
 
 
+    private Membership getMembershipOrThrow(String email, String orgSlug) {
+        UserEntity user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        Organization organization = organizationRepository.findBySlug(orgSlug)
+                .orElseThrow(() -> new ResourceNotFoundException("Organization not found"));
+        return membershipRepository.findByUserIdAndOrganizationId(user.getId(), organization.getId())
+                .orElseThrow(() -> new AccessDeniedException("Access denied: You are not a member of this organization"));
+    }
 }

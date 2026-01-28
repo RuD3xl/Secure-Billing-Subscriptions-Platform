@@ -2,6 +2,7 @@ package com.rud3xl.sbp.controller;
 
 import com.rud3xl.sbp.dto.organization.CreateOrganizationRequest;
 import com.rud3xl.sbp.dto.organization.OrganizationResponse;
+import com.rud3xl.sbp.dto.organization.UpdateOrganizationRequest;
 import com.rud3xl.sbp.service.OrganizationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,17 +32,30 @@ public class OrganizationController {
 
     @GetMapping()
     public ResponseEntity<List<OrganizationResponse>> getAllMyOrganization(@AuthenticationPrincipal UserDetails userDetails){
-        List<OrganizationResponse> response = organizationService.getAllMyOrganization(userDetails);
+        List<OrganizationResponse> response = organizationService.getAllMyOrganization(userDetails.getUsername());
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{slug}")
     public ResponseEntity<OrganizationResponse> getOrganizationBySlug(@AuthenticationPrincipal UserDetails userDetails, @PathVariable String slug){
-        OrganizationResponse response = organizationService.getOrganizationBySlug(userDetails, slug);
+        OrganizationResponse response = organizationService.getOrganizationBySlug(userDetails.getUsername(), slug);
         return ResponseEntity.ok(response);
     }
 
+    @PatchMapping("/{slug}")
+    public ResponseEntity<OrganizationResponse> updateOrganization(
+            @PathVariable String slug,
+            @RequestBody @Valid UpdateOrganizationRequest request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ){
+        return ResponseEntity.ok(organizationService.updateOrganization(slug, request, userDetails.getUsername()));
+    }
 
+    @DeleteMapping("/{slug}")
+    public ResponseEntity<Void> deleteOrganization(@PathVariable String slug, @AuthenticationPrincipal UserDetails userDetails){
+        organizationService.deleteOrganization(slug, userDetails.getUsername());
+        return ResponseEntity.noContent().build();
+    }
 }
 
 
