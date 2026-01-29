@@ -1,4 +1,4 @@
-package com.rud3xl.sbp.service;
+package com.rud3xl.sbp.service.Organizations;
 
 
 import com.rud3xl.sbp.domain.Membership;
@@ -10,7 +10,7 @@ import com.rud3xl.sbp.domain.enums.OrganizationStatus;
 import com.rud3xl.sbp.dto.organization.CreateOrganizationRequest;
 import com.rud3xl.sbp.dto.organization.OrganizationResponse;
 import com.rud3xl.sbp.dto.organization.UpdateOrganizationRequest;
-import com.rud3xl.sbp.exception.OrganizationExistsException;
+import com.rud3xl.sbp.exception.ResourceExistsException;
 import com.rud3xl.sbp.exception.ResourceNotFoundException;
 import com.rud3xl.sbp.mapper.OrganizationMapper;
 import com.rud3xl.sbp.repository.MembershipRepository;
@@ -18,7 +18,6 @@ import com.rud3xl.sbp.repository.OrganizationRepository;
 import com.rud3xl.sbp.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,7 +43,7 @@ public class OrganizationService {
         }
 
         if (organizationRepository.existsBySlug(slug)) {
-            throw new OrganizationExistsException("Organization with slug " + slug + " already exists.");
+            throw new ResourceExistsException("Organization with slug " + slug + " already exists.");
         }
         Organization organization = Organization.builder()
                 .name(request.getName())
@@ -94,7 +93,7 @@ public class OrganizationService {
 
         if(request.getSlug() != null && !organization.getSlug().equals(request.getSlug())){
             if (organizationRepository.existsBySlug(request.getSlug())) {
-                throw new OrganizationExistsException("Organization with slug " + request.getSlug() + " already exists.");
+                throw new ResourceExistsException("Organization with slug " + request.getSlug() + " already exists.");
             }
             organization.setSlug(request.getSlug());
         }
@@ -118,7 +117,7 @@ public class OrganizationService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         Organization organization = organizationRepository.findBySlug(orgSlug)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization not found"));
-        return membershipRepository.findByUserIdAndOrganizationId(user.getId(), organization.getId())
+        return membershipRepository.findByUserIdAndOrganizationIdAndStatus(user.getId(), organization.getId(), MembershipStatus.ACTIVE)
                 .orElseThrow(() -> new AccessDeniedException("Access denied: You are not a member of this organization"));
     }
 }

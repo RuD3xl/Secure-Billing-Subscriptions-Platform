@@ -3,7 +3,7 @@ package com.rud3xl.sbp.controller;
 import com.rud3xl.sbp.dto.organization.CreateOrganizationRequest;
 import com.rud3xl.sbp.dto.organization.OrganizationResponse;
 import com.rud3xl.sbp.dto.organization.UpdateOrganizationRequest;
-import com.rud3xl.sbp.service.OrganizationService;
+import com.rud3xl.sbp.service.Organizations.OrganizationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
