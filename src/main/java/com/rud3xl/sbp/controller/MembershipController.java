@@ -1,9 +1,10 @@
 package com.rud3xl.sbp.controller;
 
-import com.rud3xl.sbp.domain.enums.OrganizationRole;
+import com.rud3xl.sbp.domain.Organization;
 import com.rud3xl.sbp.dto.organization.AddMemberRequest;
 import com.rud3xl.sbp.dto.organization.MemberResponse;
 import com.rud3xl.sbp.dto.organization.UpdateMemberRoleRequest;
+import com.rud3xl.sbp.security.context.CurrentOrg;
 import com.rud3xl.sbp.service.Organizations.MembershipService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,21 +20,23 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class MembershipController {
     private final MembershipService membershipService;
+
     @GetMapping()
     public ResponseEntity<List<MemberResponse>> getOrganizationMemberships(
             @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable String slug
+            @CurrentOrg Organization organization
     ){
-        List<MemberResponse> memberResponses = membershipService.getOrganizationMembers(userDetails.getUsername(), slug);
+        List<MemberResponse> memberResponses = membershipService.getOrganizationMembers(userDetails.getUsername(), organization);
         return ResponseEntity.ok(memberResponses);
     }
 
     @PostMapping()
     public ResponseEntity<MemberResponse> inviteMember(
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestBody AddMemberRequest request, @PathVariable String slug
+            @RequestBody AddMemberRequest request,
+            @CurrentOrg Organization organization
     ){
-        MemberResponse response = membershipService.addMember(userDetails.getUsername(), request.getEmail(), slug);
+        MemberResponse response = membershipService.addMember(organization, userDetails.getUsername(), request.getEmail());
         return ResponseEntity.status(201).body(response);
     }
 
@@ -42,19 +45,19 @@ public class MembershipController {
             @RequestBody UpdateMemberRoleRequest request,
             @PathVariable UUID memberId,
             @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable String slug
+            @CurrentOrg Organization organization
     ) {
-        MemberResponse response = membershipService.updateMemberRole(userDetails.getUsername(), slug, memberId, request.getRole());
+        MemberResponse response = membershipService.updateMemberRole(userDetails.getUsername(), organization, memberId, request.getRole());
         return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{memberId}")
     public ResponseEntity<Void> removeMember(
-            @PathVariable String slug,
             @PathVariable UUID memberId,
-            @AuthenticationPrincipal UserDetails userDetails
+            @AuthenticationPrincipal UserDetails userDetails,
+            @CurrentOrg Organization organization
     ) {
-        membershipService.removeMember(userDetails.getUsername(), slug, memberId);
+        membershipService.removeMember(userDetails.getUsername(), organization, memberId);
         return ResponseEntity.noContent().build();
     }
 }

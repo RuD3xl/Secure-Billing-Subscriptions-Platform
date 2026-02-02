@@ -1,8 +1,10 @@
 package com.rud3xl.sbp.controller;
 
+import com.rud3xl.sbp.domain.Organization;
 import com.rud3xl.sbp.dto.organization.CreateOrganizationRequest;
 import com.rud3xl.sbp.dto.organization.OrganizationResponse;
 import com.rud3xl.sbp.dto.organization.UpdateOrganizationRequest;
+import com.rud3xl.sbp.security.context.CurrentOrg;
 import com.rud3xl.sbp.service.Organizations.OrganizationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +22,6 @@ import java.util.List;
 public class OrganizationController {
     private final OrganizationService organizationService;
 
-
     @PostMapping()
     public ResponseEntity<OrganizationResponse> createOrganization(
             @RequestBody @Valid CreateOrganizationRequest request,
@@ -37,25 +38,29 @@ public class OrganizationController {
     }
 
     @GetMapping("/{slug}")
-    public ResponseEntity<OrganizationResponse> getOrganizationBySlug(@AuthenticationPrincipal UserDetails userDetails, @PathVariable String slug){
-        OrganizationResponse response = organizationService.getOrganizationBySlug(userDetails.getUsername(), slug);
+    public ResponseEntity<OrganizationResponse> getOrganizationBySlug(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @CurrentOrg Organization organization
+    ){
+        OrganizationResponse response = organizationService.getOrganizationByContext(organization, userDetails.getUsername());
         return ResponseEntity.ok(response);
     }
 
     @PatchMapping("/{slug}")
     public ResponseEntity<OrganizationResponse> updateOrganization(
-            @PathVariable String slug,
             @RequestBody @Valid UpdateOrganizationRequest request,
-            @AuthenticationPrincipal UserDetails userDetails
+            @AuthenticationPrincipal UserDetails userDetails,
+            @CurrentOrg Organization organization
     ){
-        return ResponseEntity.ok(organizationService.updateOrganization(slug, request, userDetails.getUsername()));
+        return ResponseEntity.ok(organizationService.updateOrganization(organization, request, userDetails.getUsername()));
     }
 
     @DeleteMapping("/{slug}")
-    public ResponseEntity<Void> deleteOrganization(@PathVariable String slug, @AuthenticationPrincipal UserDetails userDetails){
-        organizationService.deleteOrganization(slug, userDetails.getUsername());
+    public ResponseEntity<Void> deleteOrganization(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @CurrentOrg Organization organization
+    ){
+        organizationService.deleteOrganization(organization, userDetails.getUsername());
         return ResponseEntity.noContent().build();
     }
 }
-
-

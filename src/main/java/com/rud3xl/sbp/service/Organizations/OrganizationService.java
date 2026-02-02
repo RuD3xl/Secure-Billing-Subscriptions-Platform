@@ -23,8 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-
-
 @Service
 @RequiredArgsConstructor
 public class OrganizationService {
@@ -58,14 +56,7 @@ public class OrganizationService {
                 .role(OrganizationRole.OWNER)
                 .build();
         membershipRepository.save(membership);
-
         return organizationMapper.toDto(organization, OrganizationRole.OWNER);
-    }
-
-    @Transactional(readOnly = true)
-    public OrganizationResponse getOrganizationBySlug(String email, String slug){
-        Membership membership = getMembershipOrThrow(email, slug);
-        return organizationMapper.toDto(membership.getOrganization(), membership.getRole());
     }
 
     @Transactional(readOnly = true)
@@ -80,10 +71,16 @@ public class OrganizationService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public OrganizationResponse getOrganizationByContext(Organization organization, String email){
+        Membership membership = getRequesterMembership(email, organization);
+        return organizationMapper.toDto(organization, membership.getRole());
+    }
+
     @Transactional
-    public OrganizationResponse updateOrganization(String slug, UpdateOrganizationRequest request, String email){
-        Membership membership = getMembershipOrThrow(email, slug);
-        Organization organization = membership.getOrganization();
+    public OrganizationResponse updateOrganization(Organization organization, UpdateOrganizationRequest request, String email){
+        Membership membership = getRequesterMembership(email, organization);
+
         if(membership.getRole() != OrganizationRole.OWNER && membership.getRole() != OrganizationRole.ADMIN){
             throw new AccessDeniedException("User is not allowed to update organization");
         }
@@ -97,27 +94,22 @@ public class OrganizationService {
             }
             organization.setSlug(request.getSlug());
         }
+        organizationRepository.save(organization);
         return organizationMapper.toDto(organization, membership.getRole());
     }
 
     @Transactional
-    public void deleteOrganization(String slug, String email){
-        Membership membership = getMembershipOrThrow(email, slug);
+    public void deleteOrganization(Organization organization, String email){
+        Membership membership = getRequesterMembership(email, organization);
         if(membership.getRole() != OrganizationRole.OWNER){
             throw new AccessDeniedException("User is not allowed to delete organization");
         }
-        Organization organization = membership.getOrganization();
         organization.setStatus(OrganizationStatus.SUSPENDED);
         organizationRepository.save(organization);
     }
 
-
-    private Membership getMembershipOrThrow(String email, String orgSlug) {
-        UserEntity user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        Organization organization = organizationRepository.findBySlug(orgSlug)
-                .orElseThrow(() -> new ResourceNotFoundException("Organization not found"));
-        return membershipRepository.findByUserIdAndOrganizationIdAndStatus(user.getId(), organization.getId(), MembershipStatus.ACTIVE)
-                .orElseThrow(() -> new AccessDeniedException("Access denied: You are not a member of this organization"));
+    private Membership getRequesterMembership(String email, Organization organization) {
+        return membershipRepository.findByUserEmailAndOrganizationId(email, organization.getId())
+                .orElseThrow(() -> new AccessDeniedException("User is not a member (Should be caught by Interceptor)"));
     }
 }

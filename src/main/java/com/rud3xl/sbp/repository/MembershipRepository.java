@@ -16,5 +16,7 @@ public interface MembershipRepository extends JpaRepository<Membership, UUID> {
     Optional<Membership> findByUserIdAndOrganizationIdAndStatus(UUID userId, UUID organizationId, MembershipStatus status);
     Optional<Membership> findByUserIdAndOrganizationId(UUID userId, UUID organizationId);
     List<Membership> findAllByOrganizationId(UUID organizationId);
+    Optional<Membership> findByUserEmailAndOrganizationId(String email, UUID orgId);
     Long countByOrganizationIdAndRoleAndStatus(UUID organizationId, OrganizationRole role, MembershipStatus status);
+    boolean existsByOrganizationIdAndUserEmailAndStatus(UUID organizationId, String userEmail, MembershipStatus status);
 }

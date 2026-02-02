@@ -7,6 +7,7 @@ import com.rud3xl.sbp.domain.enums.UserStatus;
 import com.rud3xl.sbp.dto.auth.AuthResponse;
 import com.rud3xl.sbp.dto.auth.LoginRequest;
 import com.rud3xl.sbp.dto.auth.RegisterRequest;
+import com.rud3xl.sbp.exception.ResourceExistsException;
 import com.rud3xl.sbp.repository.UserRepository;
 import com.rud3xl.sbp.security.JwtService;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +29,7 @@ public class AuthService {
     @Transactional
     public void register(RegisterRequest registerRequest){
         if(userRepository.existsByEmail(registerRequest.getEmail())){
-            throw new IllegalArgumentException("Email already exists");
+            throw new ResourceExistsException("Email already exists");
         }
 
         UserEntity user = UserEntity.builder()
@@ -40,10 +41,10 @@ public class AuthService {
         userRepository.save(user);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest loginRequest){
 
-        UserEntity user = userRepository.findByEmail(loginRequest.getEmail()).orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
+        UserEntity user = userRepository.findByEmail(loginRequest.getEmail()).orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
         if(!passwordEncoder.matches(loginRequest.getPassword(), user.getPasswordHash())){
             throw new BadCredentialsException("Invalid email or password");
         }
