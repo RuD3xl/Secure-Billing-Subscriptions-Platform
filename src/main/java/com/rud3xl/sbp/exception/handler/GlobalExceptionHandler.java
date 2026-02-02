@@ -2,14 +2,14 @@ package com.rud3xl.sbp.exception.handler;
 
 
 import com.rud3xl.sbp.dto.ApiErrorResponse;
-import com.rud3xl.sbp.exception.OrganizationExistsException;
+import com.rud3xl.sbp.exception.ResourceExistsException;
 import com.rud3xl.sbp.exception.ResourceNotFoundException;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -98,7 +98,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ApiErrorResponse> handleBadCredentials(Exception ex, HttpServletRequest request) {
+    public ResponseEntity<ApiErrorResponse> handleBadCredentials(BadCredentialsException ex, HttpServletRequest request) {
         log.error("Bad credentials", ex);
         ApiErrorResponse error = buildResponse(
                 HttpStatus.UNAUTHORIZED,
@@ -111,7 +111,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(ExpiredJwtException.class)
-    public ResponseEntity<ApiErrorResponse> handleExpiredJwt(Exception ex, HttpServletRequest request) {
+    public ResponseEntity<ApiErrorResponse> handleExpiredJwt(ExpiredJwtException ex, HttpServletRequest request) {
         log.error("Expired jwt", ex);
         ApiErrorResponse error = buildResponse(
                 HttpStatus.UNAUTHORIZED,
@@ -122,8 +122,8 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
     }
 
-    @ExceptionHandler(OrganizationExistsException.class)
-    public ResponseEntity<ApiErrorResponse> handleOrganizationExists(OrganizationExistsException ex, HttpServletRequest request) {
+    @ExceptionHandler(ResourceExistsException.class)
+    public ResponseEntity<ApiErrorResponse> handleOrganizationExists(ResourceExistsException ex, HttpServletRequest request) {
         ApiErrorResponse error = buildResponse(
                 HttpStatus.CONFLICT,
                 ex.getMessage(),
@@ -131,5 +131,15 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAccessDeniedException(AccessDeniedException ex, HttpServletRequest request) {
+        ApiErrorResponse error = buildResponse(
+                HttpStatus.FORBIDDEN,
+                ex.getMessage(),
+                null,
+                request.getRequestURI()
+        );
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 }

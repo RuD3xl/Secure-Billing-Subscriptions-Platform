@@ -1,5 +1,6 @@
 package com.rud3xl.sbp.dto.organization;
 
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -12,8 +13,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CreateOrganizationRequest {
-    @NotBlank(message = "The field must not be empty")
+public class UpdateOrganizationRequest {
     @Size(min = 3, max = 120, message = "Organization name must be between 3 and 120 characters long")
     private String name;
 

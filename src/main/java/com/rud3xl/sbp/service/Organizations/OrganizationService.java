@@ -1,4 +1,4 @@
-package com.rud3xl.sbp.service;
+package com.rud3xl.sbp.service.Organizations;
 
 
 import com.rud3xl.sbp.domain.Membership;
@@ -9,7 +9,8 @@ import com.rud3xl.sbp.domain.enums.OrganizationRole;
 import com.rud3xl.sbp.domain.enums.OrganizationStatus;
 import com.rud3xl.sbp.dto.organization.CreateOrganizationRequest;
 import com.rud3xl.sbp.dto.organization.OrganizationResponse;
-import com.rud3xl.sbp.exception.OrganizationExistsException;
+import com.rud3xl.sbp.dto.organization.UpdateOrganizationRequest;
+import com.rud3xl.sbp.exception.ResourceExistsException;
 import com.rud3xl.sbp.exception.ResourceNotFoundException;
 import com.rud3xl.sbp.mapper.OrganizationMapper;
 import com.rud3xl.sbp.repository.MembershipRepository;
@@ -17,13 +18,10 @@ import com.rud3xl.sbp.repository.OrganizationRepository;
 import com.rud3xl.sbp.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-
-
 
 @Service
 @RequiredArgsConstructor
@@ -43,7 +41,7 @@ public class OrganizationService {
         }
 
         if (organizationRepository.existsBySlug(slug)) {
-            throw new OrganizationExistsException("Organization with slug " + slug + " already exists.");
+            throw new ResourceExistsException("Organization with slug " + slug + " already exists.");
         }
         Organization organization = Organization.builder()
                 .name(request.getName())
@@ -58,22 +56,12 @@ public class OrganizationService {
                 .role(OrganizationRole.OWNER)
                 .build();
         membershipRepository.save(membership);
-
         return organizationMapper.toDto(organization, OrganizationRole.OWNER);
     }
 
     @Transactional(readOnly = true)
-    public OrganizationResponse getOrganizationBySlug(UserDetails userDetails, String slug){
-        UserEntity user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow(() -> new ResourceNotFoundException("User not fund"));
-        Organization organization = organizationRepository.findBySlug(slug).orElseThrow(() -> new ResourceNotFoundException("Organization not fund"));
-        Membership membership = membershipRepository.findByUserIdAndOrganizationId(user.getId(), organization.getId())
-                .orElseThrow(() -> new AccessDeniedException("User is not a member of the organization"));
-        return organizationMapper.toDto(organization, membership.getRole());
-    }
-
-    @Transactional(readOnly = true)
-    public List<OrganizationResponse> getAllMyOrganization(UserDetails userDetails) {
-        UserEntity user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow(() -> new ResourceNotFoundException("User not fund"));
+    public List<OrganizationResponse> getAllMyOrganization(String email) {
+        UserEntity user = userRepository.findByEmail(email).orElseThrow(() -> new ResourceNotFoundException("User not fund"));
         List<Membership> membership = membershipRepository.findAllByUserId(user.getId());
         return membership.stream()
                 .map(m -> organizationMapper.toDto(
@@ -83,6 +71,45 @@ public class OrganizationService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public OrganizationResponse getOrganizationByContext(Organization organization, String email){
+        Membership membership = getRequesterMembership(email, organization);
+        return organizationMapper.toDto(organization, membership.getRole());
+    }
 
+    @Transactional
+    public OrganizationResponse updateOrganization(Organization organization, UpdateOrganizationRequest request, String email){
+        Membership membership = getRequesterMembership(email, organization);
 
+        if(membership.getRole() != OrganizationRole.OWNER && membership.getRole() != OrganizationRole.ADMIN){
+            throw new AccessDeniedException("User is not allowed to update organization");
+        }
+        if(request.getName() != null){
+            organization.setName(request.getName());
+        }
+
+        if(request.getSlug() != null && !organization.getSlug().equals(request.getSlug())){
+            if (organizationRepository.existsBySlug(request.getSlug())) {
+                throw new ResourceExistsException("Organization with slug " + request.getSlug() + " already exists.");
+            }
+            organization.setSlug(request.getSlug());
+        }
+        organizationRepository.save(organization);
+        return organizationMapper.toDto(organization, membership.getRole());
+    }
+
+    @Transactional
+    public void deleteOrganization(Organization organization, String email){
+        Membership membership = getRequesterMembership(email, organization);
+        if(membership.getRole() != OrganizationRole.OWNER){
+            throw new AccessDeniedException("User is not allowed to delete organization");
+        }
+        organization.setStatus(OrganizationStatus.SUSPENDED);
+        organizationRepository.save(organization);
+    }
+
+    private Membership getRequesterMembership(String email, Organization organization) {
+        return membershipRepository.findByUserEmailAndOrganizationId(email, organization.getId())
+                .orElseThrow(() -> new AccessDeniedException("User is not a member (Should be caught by Interceptor)"));
+    }
 }
