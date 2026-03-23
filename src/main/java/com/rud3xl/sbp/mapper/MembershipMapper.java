@@ -7,11 +7,11 @@ import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring")
 public interface MembershipMapper {
-    @Mapping(target = "name", source = "membership.user.fullName")
-    @Mapping(target = "email", source = "membership.user.email")
-    @Mapping(target = "role", source = "membership.role") // с этой темой я кста разобрался
-    @Mapping(target = "id", source = "membership.user.id")
-    @Mapping(target = "status", source = "membership.status")
-    @Mapping(target = "joinedAt", source = "membership.createdAt")
+    @Mapping(target = "name", source = "user.fullName")
+    @Mapping(target = "email", source = "user.email")
+    @Mapping(target = "role", source = "role")
+    @Mapping(target = "id", source = "user.id")
+    @Mapping(target = "status", source = "status")
+    @Mapping(target = "joinedAt", source = "createdAt")
     MemberResponse toDto(Membership membership);
 }
